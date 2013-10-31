@@ -6,7 +6,6 @@ import (
 	"github.com/dgryski/go-wurfl"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 )
 
@@ -25,6 +24,7 @@ func lookupHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 
+	port := flag.String("p", ":8080", "port to listen on")
 	wxml := flag.String("wxml", "wurfl.xml", "path to wurfl.xml")
 	flag.Parse()
 
@@ -32,10 +32,6 @@ func main() {
 
 	http.HandleFunc("/lookup/", lookupHandler)
 
-	port := ":8080"
-	if p := os.Getenv("PORT"); p != "" {
-		port = ":" + p
-	}
-	log.Println("listening on port", port)
-	log.Fatal(http.ListenAndServe(port, nil))
+	log.Println("listening on port", *port)
+	log.Fatal(http.ListenAndServe(*port, nil))
 }
