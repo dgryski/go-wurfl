@@ -61,7 +61,9 @@ func (w *Wurfl) Lookup(useragent string) *Device {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	device := C.wurfl_lookup_useragent(w.wurfl, C.CString(useragent))
+	ua := C.CString(useragent)
+	device := C.wurfl_lookup_useragent(w.wurfl, ua)
+	C.free(unsafe.Pointer(ua))
 
 	if device == nil {
 		return nil
