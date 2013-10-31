@@ -56,6 +56,37 @@ func New(wurflxml string, patches ...string) (*Wurfl, error) {
 	return w, nil
 }
 
+func (w *Wurfl) LookupProperties(useragent string, proplist []string) *Device {
+
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	ua := C.CString(useragent)
+	device := C.wurfl_lookup_useragent(w.wurfl, ua)
+	C.free(unsafe.Pointer(ua))
+
+	if device == nil {
+		return nil
+	}
+
+	m := make(map[string]string)
+
+	for _, prop := range proplist {
+		cprop := C.CString(prop)
+		val := C.wurfl_device_get_capability(device, cprop)
+		C.free(unsafe.Pointer(cprop))
+		m[prop] = C.GoString(val)
+	}
+
+	d := &Device{
+		Device:       C.GoString(C.wurfl_device_get_id(device)),
+		Capabilities: m,
+	}
+	C.wurfl_device_destroy(device)
+
+	return d
+}
+
 func (w *Wurfl) Lookup(useragent string) *Device {
 
 	w.mu.Lock()
