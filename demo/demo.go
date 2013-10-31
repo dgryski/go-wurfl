@@ -28,7 +28,12 @@ func main() {
 	wxml := flag.String("wxml", "wurfl.xml", "path to wurfl.xml")
 	flag.Parse()
 
-	wurfldb = wurfl.New(*wxml)
+	var err error
+	wurfldb, err = wurfl.New(*wxml)
+
+	if err != nil {
+		log.Fatalln("error loading wurfl:", err)
+	}
 
 	http.HandleFunc("/lookup/", lookupHandler)
 
