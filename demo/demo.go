@@ -13,7 +13,7 @@ var wurfldb *wurfl.Wurfl
 
 func lookupHandler(w http.ResponseWriter, r *http.Request) {
 
-	ua := strings.TrimPrefix("/lookup/", r.RequestURI)
+	ua := strings.TrimPrefix(r.RequestURI, "/lookup/")
 
 	m := wurfldb.Lookup(ua)
 
