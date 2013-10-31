@@ -10,6 +10,7 @@ package wurfl
 import "C"
 
 import (
+	"errors"
 	"sync"
 	"unsafe"
 )
@@ -19,7 +20,7 @@ type Wurfl struct {
 	mu    sync.Mutex
 }
 
-func New(wurflxml string) *Wurfl {
+func New(wurflxml string) (*Wurfl, error) {
 	w := &Wurfl{}
 
 	w.wurfl = C.wurfl_create()
@@ -30,10 +31,11 @@ func New(wurflxml string) *Wurfl {
 	C.free(unsafe.Pointer(wxml))
 
 	if C.wurfl_load(w.wurfl) != C.WURFL_OK {
-		return nil
+		err := C.wurfl_get_error_message(w.wurfl)
+		return nil, errors.New(C.GoString(err))
 	}
 
-	return w
+	return w, nil
 }
 
 func (w *Wurfl) Lookup(useragent string) map[string]string {
