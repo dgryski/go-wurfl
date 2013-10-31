@@ -20,6 +20,11 @@ type Wurfl struct {
 	mu    sync.Mutex
 }
 
+type Device struct {
+	Device       string            `json:"device"`
+	Capabilities map[string]string `json:"capabilities"`
+}
+
 func New(wurflxml string, patches ...string) (*Wurfl, error) {
 	w := &Wurfl{}
 
@@ -51,7 +56,7 @@ func New(wurflxml string, patches ...string) (*Wurfl, error) {
 	return w, nil
 }
 
-func (w *Wurfl) Lookup(useragent string) map[string]string {
+func (w *Wurfl) Lookup(useragent string) *Device {
 
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -78,7 +83,12 @@ func (w *Wurfl) Lookup(useragent string) map[string]string {
 
 		C.wurfl_device_capability_enumerator_move_next(enumerator)
 	}
+
+	d := &Device{
+		Device:       C.GoString(C.wurfl_device_get_id(device)),
+		Capabilities: m,
+	}
 	C.wurfl_device_destroy(device)
 
-	return m
+	return d
 }
