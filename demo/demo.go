@@ -6,6 +6,7 @@ import (
 	"github.com/dgryski/go-wurfl"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -14,6 +15,11 @@ var wurfldb *wurfl.Wurfl
 func lookupHandler(w http.ResponseWriter, r *http.Request) {
 
 	ua := strings.TrimPrefix(r.RequestURI, "/lookup/")
+
+	ua, err := url.QueryUnescape(ua)
+	if err != nil {
+		http.Error(w, "bad query", http.StatusBadRequest)
+	}
 
 	m := wurfldb.Lookup(ua)
 
