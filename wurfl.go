@@ -11,6 +11,7 @@ import "C"
 
 import (
 	"errors"
+	"strconv"
 	"sync"
 	"unsafe"
 )
@@ -21,8 +22,8 @@ type Wurfl struct {
 }
 
 type Device struct {
-	Device       string            `json:"device"`
-	Capabilities map[string]string `json:"capabilities"`
+	Device       string                 `json:"device"`
+	Capabilities map[string]interface{} `json:"capabilities"`
 }
 
 func New(wurflxml string, patches ...string) (*Wurfl, error) {
@@ -56,6 +57,21 @@ func New(wurflxml string, patches ...string) (*Wurfl, error) {
 	return w, nil
 }
 
+func concreteProperty(val string) interface{} {
+
+	if val == "true" || val == "false" {
+		return val == "true"
+	}
+
+	// check for numbers
+	n, err := strconv.Atoi(val)
+	if err == nil {
+		return n
+	}
+
+	return val
+}
+
 func (w *Wurfl) LookupProperties(useragent string, proplist []string) *Device {
 
 	w.mu.Lock()
@@ -69,13 +85,13 @@ func (w *Wurfl) LookupProperties(useragent string, proplist []string) *Device {
 		return nil
 	}
 
-	m := make(map[string]string)
+	m := make(map[string]interface{})
 
 	for _, prop := range proplist {
 		cprop := C.CString(prop)
 		val := C.wurfl_device_get_capability(device, cprop)
 		C.free(unsafe.Pointer(cprop))
-		m[prop] = C.GoString(val)
+		m[prop] = concreteProperty(C.GoString(val))
 	}
 
 	d := &Device{
@@ -100,7 +116,7 @@ func (w *Wurfl) Lookup(useragent string) *Device {
 		return nil
 	}
 
-	m := make(map[string]string)
+	m := make(map[string]interface{})
 
 	enumerator := C.wurfl_device_get_capability_enumerator(device)
 
@@ -111,7 +127,7 @@ func (w *Wurfl) Lookup(useragent string) *Device {
 		if name != nil && val != nil {
 			gname := C.GoString(name)
 			gval := C.GoString(val)
-			m[gname] = gval
+			m[gname] = concreteProperty(gval)
 		}
 
 		C.wurfl_device_capability_enumerator_move_next(enumerator)
