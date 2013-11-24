@@ -22,8 +22,9 @@ type Wurfl struct {
 }
 
 type Device struct {
-	Device       string                 `json:"device"`
-	Capabilities map[string]interface{} `json:"capabilities"`
+	Device              string                 `json:"device"`
+	Capabilities        map[string]interface{} `json:"capabilities"`
+	VirtualCapabilities map[string]interface{} `json:"virtual"`
 }
 
 func New(wurflxml string, patches ...string) (*Wurfl, error) {
@@ -71,7 +72,7 @@ func concreteProperty(val string) interface{} {
 	return val
 }
 
-func (w *Wurfl) LookupProperties(useragent string, proplist []string) *Device {
+func (w *Wurfl) LookupProperties(useragent string, proplist []string, vproplist []string) *Device {
 
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -93,13 +94,43 @@ func (w *Wurfl) LookupProperties(useragent string, proplist []string) *Device {
 		m[prop] = concreteProperty(C.GoString(val))
 	}
 
+	// get the virtual properties
+	mv := make(map[string]interface{})
+	for _, prop := range vproplist {
+		cprop := C.CString(prop)
+		val := C.wurfl_device_get_virtual_capability(device, cprop)
+		C.free(unsafe.Pointer(cprop))
+		mv[prop] = concreteProperty(C.GoString(val))
+	}
+
 	d := &Device{
-		Device:       C.GoString(C.wurfl_device_get_id(device)),
-		Capabilities: m,
+		Device:              C.GoString(C.wurfl_device_get_id(device)),
+		Capabilities:        m,
+		VirtualCapabilities: mv,
 	}
 	C.wurfl_device_destroy(device)
 
 	return d
+}
+
+func wurfl_capability_enumerate(enumerator C.wurfl_device_capability_enumerator_handle) map[string]interface{} {
+
+	m := make(map[string]interface{})
+
+	for C.wurfl_device_capability_enumerator_is_valid(enumerator) != 0 {
+		name := C.wurfl_device_capability_enumerator_get_name(enumerator)
+		val := C.wurfl_device_capability_enumerator_get_value(enumerator)
+
+		if name != nil && val != nil {
+			gname := C.GoString(name)
+			gval := C.GoString(val)
+			m[gname] = concreteProperty(gval)
+		}
+
+		C.wurfl_device_capability_enumerator_move_next(enumerator)
+	}
+
+	return m
 }
 
 func (w *Wurfl) Lookup(useragent string) *Device {
@@ -115,26 +146,18 @@ func (w *Wurfl) Lookup(useragent string) *Device {
 		return nil
 	}
 
-	m := make(map[string]interface{})
-
 	enumerator := C.wurfl_device_get_capability_enumerator(device)
+	m := wurfl_capability_enumerate(enumerator)
+	C.wurfl_device_capability_enumerator_destroy(enumerator)
 
-	for C.wurfl_device_capability_enumerator_is_valid(enumerator) != 0 {
-		name := C.wurfl_device_capability_enumerator_get_name(enumerator)
-		val := C.wurfl_device_capability_enumerator_get_value(enumerator)
-
-		if name != nil && val != nil {
-			gname := C.GoString(name)
-			gval := C.GoString(val)
-			m[gname] = concreteProperty(gval)
-		}
-
-		C.wurfl_device_capability_enumerator_move_next(enumerator)
-	}
+	enumerator = C.wurfl_device_get_virtual_capability_enumerator(device)
+	mv := wurfl_capability_enumerate(enumerator)
+	C.wurfl_device_capability_enumerator_destroy(enumerator)
 
 	d := &Device{
-		Device:       C.GoString(C.wurfl_device_get_id(device)),
-		Capabilities: m,
+		Device:              C.GoString(C.wurfl_device_get_id(device)),
+		Capabilities:        m,
+		VirtualCapabilities: mv,
 	}
 	C.wurfl_device_destroy(device)
 
