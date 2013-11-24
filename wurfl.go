@@ -31,7 +31,6 @@ func New(wurflxml string, patches ...string) (*Wurfl, error) {
 
 	w.wurfl = C.wurfl_create()
 	C.wurfl_set_engine_target(w.wurfl, C.WURFL_ENGINE_TARGET_HIGH_ACCURACY)
-	C.wurfl_set_cache_provider(w.wurfl, C.WURFL_CACHE_PROVIDER_DOUBLE_LRU, C.CString("10000,3000"))
 	wxml := C.CString(wurflxml)
 	C.wurfl_set_root(w.wurfl, wxml)
 
